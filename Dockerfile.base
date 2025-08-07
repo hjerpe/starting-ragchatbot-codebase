@@ -1,0 +1,23 @@
+FROM mcr.microsoft.com/devcontainers/python:3.12
+
+USER root
+
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y vim tree pre-commit \
+    && apt-get clean
+
+ENV USER=vscode
+ENV PATH="/home/${USER}/.local/bin:${PATH}"
+
+USER $USER
+WORKDIR /home/$USER
+
+# Ensure .local/bin exists
+RUN mkdir -p /home/${USER}/.local/bin
+
+# COPY ./.docker_requirements.txt .
+# RUN pip install --no-cache-dir -r .docker_requirements.txt
+
+# Add .local/bin to PATH in .bashrc to persist for interactive sessions
+RUN echo 'export PATH="/home/${USER}/.local/bin:${PATH}"' >> /home/${USER}/.bashrc
