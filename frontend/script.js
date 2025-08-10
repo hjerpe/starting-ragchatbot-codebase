@@ -4,8 +4,45 @@ const API_URL = '/api';
 // Global state
 let currentSessionId = null;
 
+// Retry configuration
+const RETRY_CONFIG = {
+    maxRetries: 3,
+    baseDelay: 1000, // 1 second
+    maxDelay: 5000   // 5 seconds
+};
+
+// Utility function for exponential backoff retry
+async function retryWithBackoff(fn, retries = RETRY_CONFIG.maxRetries) {
+    try {
+        return await fn();
+    } catch (error) {
+        if (retries <= 0) {
+            throw error;
+        }
+
+        // Calculate delay with exponential backoff
+        const delay = Math.min(
+            RETRY_CONFIG.baseDelay * Math.pow(2, RETRY_CONFIG.maxRetries - retries),
+            RETRY_CONFIG.maxDelay
+        );
+
+        // Only retry on network errors or 500s, not on 4xx errors
+        if (error.message.includes('network') ||
+            error.message.includes('fetch') ||
+            error.message.includes('500') ||
+            error.message.includes('timeout')) {
+
+            console.log(`Retrying in ${delay}ms... (${retries - 1} retries left)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return retryWithBackoff(fn, retries - 1);
+        }
+
+        throw error;
+    }
+}
+
 // DOM elements
-let chatMessages, chatInput, sendButton, totalCourses, courseTitles;
+let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatButton;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,7 +52,8 @@ document.addEventListener('DOMContentLoaded', () => {
     sendButton = document.getElementById('sendButton');
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
-    
+    newChatButton = document.getElementById('newChatButton');
+
     setupEventListeners();
     createNewSession();
     loadCourseStats();
@@ -28,8 +66,15 @@ function setupEventListeners() {
     chatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendMessage();
     });
-    
-    
+
+    // New chat button
+    if (newChatButton) {
+        newChatButton.addEventListener('click', startNewChat);
+        console.log('New chat button event listener added');
+    } else {
+        console.error('New chat button not found');
+    }
+
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
         button.addEventListener('click', (e) => {
@@ -46,10 +91,11 @@ async function sendMessage() {
     const query = chatInput.value.trim();
     if (!query) return;
 
-    // Disable input
+    // Disable input and buttons
     chatInput.value = '';
     chatInput.disabled = true;
     sendButton.disabled = true;
+    newChatButton.disabled = true;
 
     // Add user message
     addMessage(query, 'user');
@@ -60,21 +106,34 @@ async function sendMessage() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
     try {
-        const response = await fetch(`${API_URL}/query`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                query: query,
-                session_id: currentSessionId
-            })
+        const response = await retryWithBackoff(async () => {
+            const response = await fetch(`${API_URL}/query`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query: query,
+                    session_id: currentSessionId
+                })
+            });
+
+            if (!response.ok) {
+                let errorMessage = 'Request failed';
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.detail || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+                } catch {
+                    errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
+            }
+
+            return response;
         });
 
-        if (!response.ok) throw new Error('Query failed');
-
         const data = await response.json();
-        
+
         // Update session ID if new
         if (!currentSessionId) {
             currentSessionId = data.session_id;
@@ -87,10 +146,29 @@ async function sendMessage() {
     } catch (error) {
         // Replace loading message with error
         loadingMessage.remove();
-        addMessage(`Error: ${error.message}`, 'assistant');
+
+        let displayMessage = `Error: ${error.message}`;
+
+        // Provide helpful context for common issues
+        if (error.message.includes('API key') || error.message.includes('Invalid key') || error.message.includes('authentication')) {
+            displayMessage += '\n\n💡 **Tip**: Please check that a valid Anthropic API key is configured in the server environment.';
+        } else if (error.message.includes('connection') || error.message.includes('network') || error.message.includes('fetch')) {
+            displayMessage += '\n\n💡 **Tip**: Please check your internet connection and try again.';
+        } else if (error.message.includes('rate limit') || error.message.includes('too many requests')) {
+            displayMessage += '\n\n💡 **Tip**: Too many requests. Please wait a moment and try again.';
+        } else if (error.message.includes('timeout')) {
+            displayMessage += '\n\n💡 **Tip**: Request timed out. The server might be busy - please try again.';
+        } else if (error.message.includes('500')) {
+            displayMessage += '\n\n💡 **Tip**: Server error occurred. Please try again or contact support if the issue persists.';
+        } else if (error.message.includes('404')) {
+            displayMessage += '\n\n💡 **Tip**: Service endpoint not found. Please check the server configuration.';
+        }
+
+        addMessage(displayMessage, 'assistant');
     } finally {
         chatInput.disabled = false;
         sendButton.disabled = false;
+        newChatButton.disabled = false;
         chatInput.focus();
     }
 }
@@ -115,25 +193,34 @@ function addMessage(content, type, sources = null, isWelcome = false) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${type}${isWelcome ? ' welcome-message' : ''}`;
     messageDiv.id = `message-${messageId}`;
-    
+
     // Convert markdown to HTML for assistant messages
     const displayContent = type === 'assistant' ? marked.parse(content) : escapeHtml(content);
-    
+
     let html = `<div class="message-content">${displayContent}</div>`;
-    
+
     if (sources && sources.length > 0) {
+        // Create clickable links for sources
+        const sourceLinks = sources.map(source => {
+            if (source.link) {
+                return `<a href="${escapeHtml(source.link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.title)}</a>`;
+            } else {
+                return escapeHtml(source.title);
+            }
+        });
+
         html += `
             <details class="sources-collapsible">
                 <summary class="sources-header">Sources</summary>
-                <div class="sources-content">${sources.join(', ')}</div>
+                <div class="sources-content">${sourceLinks.join(', ')}</div>
             </details>
         `;
     }
-    
+
     messageDiv.innerHTML = html;
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-    
+
     return messageId;
 }
 
@@ -152,21 +239,58 @@ async function createNewSession() {
     addMessage('Welcome to the Course Materials Assistant! I can help you with questions about courses, lessons and specific content. What would you like to know?', 'assistant', null, true);
 }
 
+async function startNewChat() {
+    console.log('startNewChat function called');
+
+    // Disable button during operation
+    newChatButton.disabled = true;
+
+    // Brief visual feedback
+    const originalText = newChatButton.innerHTML;
+    newChatButton.innerHTML = '<span class="new-chat-icon">●</span><span class="new-chat-text">STARTING...</span>';
+
+    // Clear current session and start new one
+    await createNewSession();
+    console.log('New session created');
+
+    // Re-enable button and restore original text
+    setTimeout(() => {
+        newChatButton.innerHTML = originalText;
+        newChatButton.disabled = false;
+
+        // Focus on input for immediate use
+        chatInput.focus();
+        console.log('New chat completed');
+    }, 300);
+}
+
 // Load course statistics
 async function loadCourseStats() {
     try {
         console.log('Loading course stats...');
-        const response = await fetch(`${API_URL}/courses`);
-        if (!response.ok) throw new Error('Failed to load course stats');
-        
+        const response = await retryWithBackoff(async () => {
+            const response = await fetch(`${API_URL}/courses`);
+            if (!response.ok) {
+                let errorMessage = 'Failed to load course stats';
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.detail || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+                } catch {
+                    errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
+            }
+            return response;
+        });
+
         const data = await response.json();
         console.log('Course data received:', data);
-        
+
         // Update stats in UI
         if (totalCourses) {
             totalCourses.textContent = data.total_courses;
         }
-        
+
         // Update course titles
         if (courseTitles) {
             if (data.course_titles && data.course_titles.length > 0) {
@@ -177,7 +301,7 @@ async function loadCourseStats() {
                 courseTitles.innerHTML = '<span class="no-courses">No courses available</span>';
             }
         }
-        
+
     } catch (error) {
         console.error('Error loading course stats:', error);
         // Set default values on error
@@ -185,7 +309,15 @@ async function loadCourseStats() {
             totalCourses.textContent = '0';
         }
         if (courseTitles) {
-            courseTitles.innerHTML = '<span class="error">Failed to load courses</span>';
+            let errorDisplay = 'Failed to load courses';
+            if (error.message.includes('500')) {
+                errorDisplay = 'Server error - courses unavailable';
+            } else if (error.message.includes('404')) {
+                errorDisplay = 'Course service not found';
+            } else if (error.message.includes('network') || error.message.includes('fetch')) {
+                errorDisplay = 'Network error - courses unavailable';
+            }
+            courseTitles.innerHTML = `<span class="error">${errorDisplay}</span>`;
         }
     }
 }
