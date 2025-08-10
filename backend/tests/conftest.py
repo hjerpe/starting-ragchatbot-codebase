@@ -1,6 +1,7 @@
 """
 Simplified pytest configuration with essential fixtures only
 """
+
 import pytest
 import tempfile
 import shutil
@@ -8,7 +9,7 @@ import os
 import sys
 
 # Add backend to path for imports
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from config import Config
 

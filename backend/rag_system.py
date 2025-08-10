@@ -7,6 +7,7 @@ from session_manager import SessionManager
 from search_tools import ToolManager, CourseSearchTool, CourseOutlineTool
 from models import Course, Lesson, CourseChunk
 
+
 class RAGSystem:
     """Main orchestrator for the Retrieval-Augmented Generation system"""
 
@@ -14,9 +15,15 @@ class RAGSystem:
         self.config = config
 
         # Initialize core components
-        self.document_processor = DocumentProcessor(config.CHUNK_SIZE, config.CHUNK_OVERLAP)
-        self.vector_store = VectorStore(config.CHROMA_PATH, config.EMBEDDING_MODEL, config.MAX_RESULTS)
-        self.ai_generator = AIGenerator(config.ANTHROPIC_API_KEY, config.ANTHROPIC_MODEL)
+        self.document_processor = DocumentProcessor(
+            config.CHUNK_SIZE, config.CHUNK_OVERLAP
+        )
+        self.vector_store = VectorStore(
+            config.CHROMA_PATH, config.EMBEDDING_MODEL, config.MAX_RESULTS
+        )
+        self.ai_generator = AIGenerator(
+            config.ANTHROPIC_API_KEY, config.ANTHROPIC_MODEL
+        )
         self.session_manager = SessionManager(config.MAX_HISTORY)
 
         # Initialize search tools
@@ -38,7 +45,9 @@ class RAGSystem:
         """
         try:
             # Process the document
-            course, course_chunks = self.document_processor.process_course_document(file_path)
+            course, course_chunks = self.document_processor.process_course_document(
+                file_path
+            )
 
             # Add course metadata to vector store for semantic search
             self.vector_store.add_course_metadata(course)
@@ -51,7 +60,9 @@ class RAGSystem:
             print(f"Error processing course document {file_path}: {e}")
             return None, 0
 
-    def add_course_folder(self, folder_path: str, clear_existing: bool = False) -> Tuple[int, int]:
+    def add_course_folder(
+        self, folder_path: str, clear_existing: bool = False
+    ) -> Tuple[int, int]:
         """
         Add all course documents from a folder.
 
@@ -80,11 +91,15 @@ class RAGSystem:
         # Process each file in the folder
         for file_name in os.listdir(folder_path):
             file_path = os.path.join(folder_path, file_name)
-            if os.path.isfile(file_path) and file_name.lower().endswith(('.pdf', '.docx', '.txt')):
+            if os.path.isfile(file_path) and file_name.lower().endswith(
+                (".pdf", ".docx", ".txt")
+            ):
                 try:
                     # Check if this course might already exist
                     # We'll process the document to get the course ID, but only add if new
-                    course, course_chunks = self.document_processor.process_course_document(file_path)
+                    course, course_chunks = (
+                        self.document_processor.process_course_document(file_path)
+                    )
 
                     if course and course.title not in existing_course_titles:
                         # This is a new course - add it to the vector store
@@ -92,7 +107,9 @@ class RAGSystem:
                         self.vector_store.add_course_content(course_chunks)
                         total_courses += 1
                         total_chunks += len(course_chunks)
-                        print(f"Added new course: {course.title} ({len(course_chunks)} chunks)")
+                        print(
+                            f"Added new course: {course.title} ({len(course_chunks)} chunks)"
+                        )
                         existing_course_titles.add(course.title)
                     elif course:
                         print(f"Course already exists: {course.title} - skipping")
@@ -101,7 +118,9 @@ class RAGSystem:
 
         return total_courses, total_chunks
 
-    def query(self, query: str, session_id: Optional[str] = None) -> Tuple[str, List[str]]:
+    def query(
+        self, query: str, session_id: Optional[str] = None
+    ) -> Tuple[str, List[str]]:
         """
         Process a user query using the RAG system with tool-based search.
 
@@ -125,7 +144,7 @@ class RAGSystem:
             query=prompt,
             conversation_history=history,
             tools=self.tool_manager.get_tool_definitions(),
-            tool_manager=self.tool_manager
+            tool_manager=self.tool_manager,
         )
 
         # Get sources from the search tool
@@ -145,5 +164,5 @@ class RAGSystem:
         """Get analytics about the course catalog"""
         return {
             "total_courses": self.vector_store.get_course_count(),
-            "course_titles": self.vector_store.get_existing_course_titles()
+            "course_titles": self.vector_store.get_existing_course_titles(),
         }

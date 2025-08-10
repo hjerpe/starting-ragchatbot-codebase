@@ -1,6 +1,7 @@
 """
 System diagnostic tests - these help identify real issues when the system isn't working
 """
+
 import pytest
 import tempfile
 import os
@@ -8,7 +9,7 @@ import sys
 from unittest.mock import patch
 
 # Add backend to path for imports
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from rag_system import RAGSystem
 from config import Config
@@ -39,11 +40,13 @@ class TestSystemDiagnostics:
         # Assertions - these should work even with empty database
         assert results.is_empty()  # Empty database should return empty results
         assert results.error is None  # But no error should occur
-        assert search_result == "No relevant content found."  # Should be user-friendly message
+        assert (
+            search_result == "No relevant content found."
+        )  # Should be user-friendly message
 
         print("✅ All components work independently")
 
-    @patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key-123'})
+    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key-123"})
     def test_system_with_real_documents(self, temp_chroma_db):
         """Test the system with actual document loading and searching"""
         config = Config()
@@ -64,7 +67,7 @@ There are three main types: supervised, unsupervised, and reinforcement learning
 Each type has different applications and use cases.
 """
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write(test_content)
             temp_file_path = f.name
 
@@ -78,7 +81,9 @@ Each type has different applications and use cases.
             # Test search functionality
             search_result = rag_system.search_tool.execute("machine learning")
             print(f"Search result length: {len(search_result)}")
-            print(f"Contains 'machine learning': {'machine learning' in search_result.lower()}")
+            print(
+                f"Contains 'machine learning': {'machine learning' in search_result.lower()}"
+            )
 
             # Basic assertions
             assert course is not None
@@ -92,14 +97,14 @@ Each type has different applications and use cases.
 
     def test_documents_folder_loading(self):
         """Test loading documents from the actual docs folder (if it exists)"""
-        docs_path = os.path.join(os.path.dirname(__file__), '..', '..', 'docs')
+        docs_path = os.path.join(os.path.dirname(__file__), "..", "..", "docs")
         print(f"\n=== DOCS FOLDER TEST ===")
         print(f"Docs path: {os.path.abspath(docs_path)}")
         print(f"Docs folder exists: {os.path.exists(docs_path)}")
 
         if os.path.exists(docs_path):
             files = os.listdir(docs_path)
-            txt_files = [f for f in files if f.endswith('.txt')]
+            txt_files = [f for f in files if f.endswith(".txt")]
             print(f"Text files found: {len(txt_files)}")
 
             # Test with temporary config to avoid affecting real database
@@ -130,15 +135,17 @@ Each type has different applications and use cases.
         else:
             print("⚠️  Docs folder doesn't exist - this is OK for testing")
 
-    @patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key-123'})
-    @patch('anthropic.Anthropic')
+    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key-123"})
+    @patch("anthropic.Anthropic")
     def test_api_integration_basic(self, mock_anthropic, temp_chroma_db):
         """Test basic API integration without complex scenarios"""
         # Simple mock setup
         mock_client = mock_anthropic.return_value
-        mock_response = type('MockResponse', (), {})()
+        mock_response = type("MockResponse", (), {})()
         mock_response.stop_reason = "end_turn"
-        mock_response.content = [type('MockContent', (), {'text': 'Test AI response'})()]
+        mock_response.content = [
+            type("MockContent", (), {"text": "Test AI response"})()
+        ]
         mock_client.messages.create.return_value = mock_response
 
         config = Config()
@@ -188,4 +195,5 @@ def temp_chroma_db():
     temp_dir = tempfile.mkdtemp()
     yield temp_dir
     import shutil
+
     shutil.rmtree(temp_dir, ignore_errors=True)

@@ -2,6 +2,7 @@
 Streamlined core functionality tests for the RAG system.
 Focus on the most important user workflows and system behavior.
 """
+
 import pytest
 import tempfile
 import shutil
@@ -10,7 +11,7 @@ import sys
 from unittest.mock import Mock, patch
 
 # Add backend to path for imports
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from search_tools import CourseSearchTool, ToolManager
 from vector_store import VectorStore, SearchResults
@@ -27,7 +28,7 @@ class TestCoreSearchFunctionality:
         mock_results = SearchResults(
             documents=["Test content about machine learning"],
             metadata=[{"course_title": "ML Course", "lesson_number": 1}],
-            distances=[0.1]
+            distances=[0.1],
         )
         mock_vector_store.search.return_value = mock_results
 
@@ -67,7 +68,7 @@ class TestCoreSearchFunctionality:
         mock_results = SearchResults(
             documents=["Sample content"],
             metadata=[{"course_title": "Test Course"}],
-            distances=[0.1]
+            distances=[0.1],
         )
         mock_vector_store.search.return_value = mock_results
 
@@ -82,7 +83,9 @@ class TestCoreSearchFunctionality:
 class TestCoreVectorStoreFunctionality:
     """Test core vector storage operations"""
 
-    def test_vector_store_add_and_search(self, temp_chroma_db, sample_course_data, sample_course_chunks):
+    def test_vector_store_add_and_search(
+        self, temp_chroma_db, sample_course_data, sample_course_chunks
+    ):
         """Test that we can add data and retrieve it with search"""
         # Setup real vector store
         vector_store = VectorStore(temp_chroma_db, "all-MiniLM-L6-v2", 5)
@@ -112,7 +115,7 @@ class TestCoreVectorStoreFunctionality:
 class TestCoreRAGSystemFunctionality:
     """Test the main RAG system workflows"""
 
-    @patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key-123'})
+    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key-123"})
     def test_rag_system_initialization(self, temp_chroma_db):
         """Test that RAG system initializes all components correctly"""
         # Setup config
@@ -130,7 +133,7 @@ class TestCoreRAGSystemFunctionality:
         assert rag_system.tool_manager is not None
         assert rag_system.search_tool is not None
 
-    @patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key-123'})
+    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key-123"})
     def test_document_loading_workflow(self, temp_chroma_db):
         """Test that we can load documents into the system"""
         # Setup
@@ -139,8 +142,9 @@ class TestCoreRAGSystemFunctionality:
         rag_system = RAGSystem(config)
 
         # Create test document
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-            f.write("""Course Title: Test ML Course
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write(
+                """Course Title: Test ML Course
 Course Instructor: Dr. Test
 
 Lesson 1: Introduction
@@ -149,7 +153,8 @@ Machine learning is the study of algorithms that improve through experience.
 
 Lesson 2: Advanced Topics
 This covers advanced machine learning concepts and techniques.
-""")
+"""
+            )
             temp_file_path = f.name
 
         try:
@@ -163,14 +168,14 @@ This covers advanced machine learning concepts and techniques.
 
             # Verify it's in the system
             analytics = rag_system.get_course_analytics()
-            assert analytics['total_courses'] == 1
-            assert "Test ML Course" in analytics['course_titles']
+            assert analytics["total_courses"] == 1
+            assert "Test ML Course" in analytics["course_titles"]
 
         finally:
             os.unlink(temp_file_path)
 
-    @patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key-123'})
-    @patch('anthropic.Anthropic')
+    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key-123"})
+    @patch("anthropic.Anthropic")
     def test_end_to_end_query_workflow(self, mock_anthropic, temp_chroma_db):
         """Test complete query workflow from user input to response"""
         # Setup mock AI response
@@ -180,7 +185,9 @@ This covers advanced machine learning concepts and techniques.
         mock_response = Mock()
         mock_response.stop_reason = "end_turn"
         mock_response.content = [Mock()]
-        mock_response.content[0].text = "This is a test response about machine learning."
+        mock_response.content[0].text = (
+            "This is a test response about machine learning."
+        )
         mock_client.messages.create.return_value = mock_response
 
         # Setup RAG system
@@ -256,13 +263,14 @@ def temp_chroma_db():
 def sample_course_data():
     """Simple sample course data"""
     from models import Course, Lesson
+
     return Course(
         title="Building Towards Computer Use with Anthropic",
         instructor="Colt Steele",
         lessons=[
             Lesson(lesson_number=0, title="Introduction"),
-            Lesson(lesson_number=1, title="API Basics")
-        ]
+            Lesson(lesson_number=1, title="API Basics"),
+        ],
     )
 
 
@@ -270,17 +278,18 @@ def sample_course_data():
 def sample_course_chunks():
     """Simple sample course chunks"""
     from models import CourseChunk
+
     return [
         CourseChunk(
             content="Welcome to Building Toward Computer Use with Anthropic.",
             course_title="Building Towards Computer Use with Anthropic",
             lesson_number=0,
-            chunk_index=0
+            chunk_index=0,
         ),
         CourseChunk(
             content="Anthropic made a recent breakthrough with computer use.",
             course_title="Building Towards Computer Use with Anthropic",
             lesson_number=0,
-            chunk_index=1
-        )
+            chunk_index=1,
+        ),
     ]

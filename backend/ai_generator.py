@@ -1,6 +1,7 @@
 import anthropic
 from typing import List, Optional, Dict, Any
 
+
 class AIGenerator:
     """Handles interactions with Anthropic's Claude API for generating responses"""
 
@@ -41,16 +42,15 @@ Provide only the direct answer to what was asked.
         self.model = model
 
         # Pre-build base API parameters
-        self.base_params = {
-            "model": self.model,
-            "temperature": 0,
-            "max_tokens": 800
-        }
+        self.base_params = {"model": self.model, "temperature": 0, "max_tokens": 800}
 
-    def generate_response(self, query: str,
-                         conversation_history: Optional[str] = None,
-                         tools: Optional[List] = None,
-                         tool_manager=None) -> str:
+    def generate_response(
+        self,
+        query: str,
+        conversation_history: Optional[str] = None,
+        tools: Optional[List] = None,
+        tool_manager=None,
+    ) -> str:
         """
         Generate AI response with optional tool usage and conversation context.
 
@@ -75,7 +75,7 @@ Provide only the direct answer to what was asked.
         api_params = {
             **self.base_params,
             "messages": [{"role": "user", "content": query}],
-            "system": system_content
+            "system": system_content,
         }
 
         # Add tools if available
@@ -93,7 +93,9 @@ Provide only the direct answer to what was asked.
         # Return direct response
         return response.content[0].text
 
-    def _handle_tool_execution(self, initial_response, base_params: Dict[str, Any], tool_manager):
+    def _handle_tool_execution(
+        self, initial_response, base_params: Dict[str, Any], tool_manager
+    ):
         """
         Handle execution of tool calls with sequential rounds support.
 
@@ -125,22 +127,25 @@ Provide only the direct answer to what was asked.
                 if content_block.type == "tool_use":
                     try:
                         tool_result = tool_manager.execute_tool(
-                            content_block.name,
-                            **content_block.input
+                            content_block.name, **content_block.input
                         )
 
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": content_block.id,
-                            "content": tool_result
-                        })
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": content_block.id,
+                                "content": tool_result,
+                            }
+                        )
                     except Exception as e:
                         # Handle tool execution errors gracefully
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": content_block.id,
-                            "content": f"Error executing tool: {str(e)}"
-                        })
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": content_block.id,
+                                "content": f"Error executing tool: {str(e)}",
+                            }
+                        )
 
             # Add tool results as single message
             if tool_results:
@@ -150,7 +155,7 @@ Provide only the direct answer to what was asked.
             next_params = {
                 **self.base_params,
                 "messages": messages.copy(),  # Create a copy to avoid mutation issues
-                "system": base_params["system"]
+                "system": base_params["system"],
             }
 
             # Only include tools if we haven't reached max rounds yet

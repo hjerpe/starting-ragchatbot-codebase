@@ -1,11 +1,14 @@
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 
+
 @dataclass
 class Message:
     """Represents a single message in a conversation"""
-    role: str     # "user" or "assistant"
+
+    role: str  # "user" or "assistant"
     content: str  # The message content
+
 
 class SessionManager:
     """Manages conversation sessions and message history"""
@@ -32,7 +35,9 @@ class SessionManager:
 
         # Keep conversation history within limits
         if len(self.sessions[session_id]) > self.max_history * 2:
-            self.sessions[session_id] = self.sessions[session_id][-self.max_history * 2:]
+            self.sessions[session_id] = self.sessions[session_id][
+                -self.max_history * 2 :
+            ]
 
     def add_exchange(self, session_id: str, user_message: str, assistant_message: str):
         """Add a complete question-answer exchange"""
