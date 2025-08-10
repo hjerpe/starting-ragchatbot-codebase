@@ -40,10 +40,15 @@ class QueryRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
 
+class SourceInfo(BaseModel):
+    """Model for source information with optional links"""
+    title: str
+    link: Optional[str] = None
+
 class QueryResponse(BaseModel):
     """Response model for course queries"""
     answer: str
-    sources: List[str]
+    sources: List[SourceInfo]
     session_id: str
 
 class CourseStats(BaseModel):
@@ -61,13 +66,23 @@ async def query_documents(request: QueryRequest):
         session_id = request.session_id
         if not session_id:
             session_id = rag_system.session_manager.create_session()
-        
+
         # Process query using RAG system
         answer, sources = rag_system.query(request.query, session_id)
-        
+
+        # Convert sources to SourceInfo objects
+        source_infos = []
+        for source in sources:
+            if isinstance(source, dict):
+                # New structured format
+                source_infos.append(SourceInfo(title=source.get('title', ''), link=source.get('link')))
+            else:
+                # Backward compatibility with string format
+                source_infos.append(SourceInfo(title=str(source), link=None))
+
         return QueryResponse(
             answer=answer,
-            sources=sources,
+            sources=source_infos,
             session_id=session_id
         )
     except Exception as e:
@@ -113,7 +128,7 @@ class DevStaticFiles(StaticFiles):
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
         return response
-    
-    
+
+
 # Serve static files for the frontend
 app.mount("/", StaticFiles(directory="../frontend", html=True), name="static")
