@@ -78,13 +78,18 @@ Always use `uv` to run tests and manage dependencies:
 
 ```bash
 # Run all tests
-uv run pytest tests/ -v
+uv run pytest
 
 # Run specific test file
-uv run pytest tests/test_search_tools.py -v
+uv run pytest backend/tests/test_search_tools.py -v
 
 # Run specific test with output
-uv run pytest tests/test_real_system.py -v -s
+uv run pytest backend/tests/test_real_system.py -v -s
+
+# Run tests by category
+uv run pytest -m unit          # Unit tests only
+uv run pytest -m integration   # Integration tests only
+uv run pytest -m api          # API endpoint tests only
 
 # Add dev dependencies
 uv add --dev pytest httpx
@@ -93,9 +98,11 @@ uv add --dev pytest httpx
 ### Test Coverage
 
 - **Core Functionality**: Essential search, vector store, and RAG system operations
+- **API Endpoints**: Comprehensive testing of all REST endpoints with error scenarios
 - **System Diagnostics**: Real-world testing with actual documents and components
-- **Error Handling**: Basic error scenarios and graceful degradation
-- **Total**: 15 focused, high-value tests that catch real issues
+- **Mock Integration**: Isolated testing with comprehensive mocking framework
+- **Error Handling**: Complete error scenarios and graceful degradation
+- **Total**: 42+ comprehensive tests including unit, integration, and API tests
 
 ### Adding Course Content
 
@@ -115,6 +122,21 @@ Lesson Link: [lesson url]
 
 Lesson 2: [lesson title]
 ...
+```
+
+### Code Quality Tools
+
+The project includes comprehensive development tools:
+
+```bash
+# Format all Python files with Black
+./scripts/format.sh
+
+# Check formatting without making changes
+./scripts/check-format.sh
+
+# Run all quality checks (tests + formatting)
+./scripts/quality-check.sh
 ```
 
 ### Package Management
