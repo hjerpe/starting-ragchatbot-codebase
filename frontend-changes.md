@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Development Infrastructure Changes
 
 ## Code Quality Tools Implementation
