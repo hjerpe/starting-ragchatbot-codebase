@@ -20,6 +20,7 @@ dev = [
     "httpx>=0.28.1",
     "pydantic>=2.11.7",
     "pytest>=8.4.1",
+    "pytest-asyncio>=0.23.0",
 ]
 
 [tool.black]
@@ -37,3 +38,21 @@ extend-exclude = '''
   | chroma_db
 )/
 '''
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-warnings",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "api: API endpoint tests",
+]
+asyncio_mode = "auto"
