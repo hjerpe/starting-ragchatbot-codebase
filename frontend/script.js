@@ -42,7 +42,7 @@ async function retryWithBackoff(fn, retries = RETRY_CONFIG.maxRetries) {
 }
 
 // DOM elements
-let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatButton;
+let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatButton, themeToggle;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -53,7 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
     newChatButton = document.getElementById('newChatButton');
+    themeToggle = document.getElementById('themeToggle');
 
+    initializeTheme();
     setupEventListeners();
     createNewSession();
     loadCourseStats();
@@ -73,6 +75,17 @@ function setupEventListeners() {
         console.log('New chat button event listener added');
     } else {
         console.error('New chat button not found');
+    }
+
+    // Theme toggle
+    if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+        themeToggle.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleTheme();
+            }
+        });
     }
 
     // Suggested questions
@@ -319,5 +332,45 @@ async function loadCourseStats() {
             }
             courseTitles.innerHTML = `<span class="error">${errorDisplay}</span>`;
         }
+    }
+}
+
+// Theme Functions
+function initializeTheme() {
+    // Check if user has a saved theme preference
+    const savedTheme = localStorage.getItem('theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    // Use saved theme, or default to system preference (with dark as fallback)
+    const initialTheme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+
+    setTheme(initialTheme);
+
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        // Only auto-switch if user hasn't manually set a preference
+        if (!localStorage.getItem('theme')) {
+            setTheme(e.matches ? 'dark' : 'light');
+        }
+    });
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+
+    // Save user preference
+    localStorage.setItem('theme', newTheme);
+}
+
+function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+
+    if (themeToggle) {
+        const isLight = theme === 'light';
+        themeToggle.setAttribute('aria-pressed', isLight.toString());
+        themeToggle.setAttribute('aria-label', `Switch to ${isLight ? 'dark' : 'light'} theme`);
+        themeToggle.title = `Switch to ${isLight ? 'dark' : 'light'} theme`;
     }
 }
