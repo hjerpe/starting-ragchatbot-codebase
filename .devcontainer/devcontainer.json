@@ -4,6 +4,12 @@
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	"name": "ds_container_base",
 	"image": "ds_container_base-box:0.1",
+	// Add the feature here:
+	"features": {
+		"ghcr.io/devcontainers/features/github-cli:1": {
+		"version": "latest"
+		}
+	},
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 	// Configure tool-specific properties.
