@@ -89,8 +89,12 @@ yarn-error.log*
 
 # UV
 .python-version
+uv.lock
 
 # Temporary files
 *.tmp
 *.temp
 .temporary/
+
+# Tree view files
+.trees/
