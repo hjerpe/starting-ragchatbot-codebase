@@ -89,7 +89,6 @@ yarn-error.log*
 
 # UV
 .python-version
-uv.lock
 
 # Temporary files
 *.tmp
